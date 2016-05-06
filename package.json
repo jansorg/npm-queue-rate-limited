@@ -1,10 +1,10 @@
 {
   "name": "queue-rate-limited",
-  "version": "0.1.0",
-  "description": "A rate limited queue",
+  "version": "0.2.0",
+  "description": "A simple, rate limited task queue",
   "bugs": {
     "url": "https://github.com/jansorg/npm-queue-rate-limited/issues",
-    "email": "mail@joachim-ansorg.de"
+    "email": "wallaby.pouch@googlemail.com"
   },
   "keywords": [
     "queue",
@@ -12,17 +12,20 @@
     "jobs",
     "throttling"
   ],
-  "author": "J. Ansorg <mail@joachim-ansorg.de>",
-  "homepage": "http://github.com/jansorg/npm-queue-rate-limited",
+  "author": "J. Ansorg <wallaby.pouch@googlemail.com>",
+  "homepage": "https://github.com/jansorg/npm-queue-rate-limited",
   "main": "src/queue-rate-limited.js",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/jansorg/npm-queue-rate-limited.git"
+    "url": "https://github.com/jansorg/npm-queue-rate-limited.git"
   },
   "engine": [
-    "node >=0.4.0"
+    "node >=6.0.0"
   ],
   "dependencies": {},
+  "devDependencies": {
+    "tape": "4.5.1"
+  },
   "licenses": [
     {
       "type": "The MIT License",
@@ -32,9 +35,5 @@
   "directories": {
     "test": "test"
   },
-  "devDependencies": {},
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "license": "ISC"
+  "license": "MIT"
 }

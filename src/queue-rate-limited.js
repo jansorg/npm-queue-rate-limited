@@ -14,10 +14,11 @@
     function Queue(maxCallsPerSecond) {
         this.maxCallsPerSecond = typeof(maxCallsPerSecond) === "undefined" ? 1 : maxCallsPerSecond;
 
-        this.jobs = [];
+        this.tasks = [];
         this.isActive = false;
         this.jobIntervalMillis = 1000 / maxCallsPerSecond;
 
+        this.lastTaskTimestamp = null;
         this.currentTaskTimeoutId = null;
     }
 
@@ -26,32 +27,48 @@
      * @return {number} - The id of the started timer. It will return null if no time is necessary, i.e. if no more task is available in the queue.
      * @private
      */
-    Queue.prototype.processNext = function () {
-        if (this.isEmpty()) {
-            return null;
-        }
-
-        var nextTaskItem = this.jobs.shift();
-        if (nextTaskItem) {
-            try {
-                var result = nextTaskItem.task.call();
-
-                nextTaskItem.onSuccess.call(null, result);
-            } catch (e) {
-                nextTaskItem.onError.call(null, e);
-            }
-        }
-
-        if (this.isEmpty()) {
-            return null;
+    Queue.prototype.updateTaskSchedule = function () {
+        if (this.isEmpty() || this.isStopped()) {
+            return;
         }
 
         var queue = this;
-        this.currentTaskTimeoutId = setTimeout(function () {
-            queue.processNext();
-        }, queue.jobIntervalMillis);
 
-        return this.currentTaskTimeoutId;
+        function processNextTask() {
+            var nextTaskItem = queue.tasks.shift();
+            if (nextTaskItem) {
+                try {
+                    var result = nextTaskItem.task.call();
+
+                    queue.lastTaskTimestamp = Date.now();
+
+                    nextTaskItem.onSuccess.call(null, result);
+                } catch (e) {
+                    nextTaskItem.onError.call(null, e);
+                }
+            }
+        }
+
+        function scheduleNext(timeoutMillisOverride) {
+            if (queue.isEmpty()) {
+                return;
+            }
+
+            queue.currentTaskTimeoutId = setTimeout(function () {
+                processNextTask();
+
+                queue.lastTaskTimestamp = Date.now();
+            }, timeoutMillisOverride && timeoutMillisOverride > 0 ? timeoutMillisOverride : queue.jobIntervalMillis);
+        }
+
+        var sinceLastInterval = Date.now() - this.lastTaskTimestamp;
+        if (this.lastTaskTimestamp == null || sinceLastInterval > this.jobIntervalMillis) {
+            //the first task ever
+            processNextTask();
+            scheduleNext();
+        } else {
+            scheduleNext(this.jobIntervalMillis - sinceLastInterval);
+        }
     };
 
     /**
@@ -69,7 +86,7 @@
 
         this.isActive = true;
 
-        this.processNext();
+        this.updateTaskSchedule();
 
         return true;
     };
@@ -105,7 +122,7 @@
      * @returns {boolean} true if this queue is currently empty, i.e. if it has no tasks in the queue.
      */
     Queue.prototype.isEmpty = function () {
-        return this.jobs.length === 0;
+        return this.tasks.length === 0;
     };
 
     /**
@@ -125,14 +142,12 @@
         var newTaskItem = {task: task, onSuccess: onSuccess || nullCallback, onError: onError || nullCallback};
 
         if (this.isEmpty() || append) {
-            this.jobs.push(newTaskItem);
+            this.tasks.push(newTaskItem);
         } else {
-            this.jobs.unshift(newTaskItem);
+            this.tasks.unshift(newTaskItem);
         }
 
-        if (this.isActive && this.currentTaskTimeoutId == null) {
-            this.processNext();
-        }
+        this.updateTaskSchedule();
     };
 
     /**
@@ -167,15 +182,18 @@
         }
 
         var removedItems = 0;
-        for (var i = this.jobs.indexOf(task); i !== -1; i = this.jobs.indexOf(task), removedItems++) {
-            this.jobs.splice(i, 1);
+        for (var i = this.tasks.length-1; i>=0; i--) {
+            if (this.tasks[i].task === task) {
+                this.tasks.splice(i, 1);
+                removedItems++;
+            }
         }
 
         return removedItems;
     };
 
     Queue.prototype.getQueueSize = function () {
-        return this.jobs.length;
+        return this.tasks.length;
     };
 
     module.exports = Queue;

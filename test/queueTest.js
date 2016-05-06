@@ -117,12 +117,12 @@ test("The queue does not execute faster than the specified max calls per second"
         for (var i = 0; i < 30; i++) {
             t.equals(execIds[i], i, "The tasks must be executed in insertion order");
         }
+
+        t.ok(q.isEmpty(), "The queue should be empty by now");
+
+        q.stop();
+        t.ok(q.isStopped(), "The queue should be stopped by now");
     }, 6 * 1000);
-
-    t.ok(q.isEmpty(), "Tee queue should be empty by now");
-
-    q.stop();
-    t.ok(q.isStopped(), "The queue should be stopped by now");
 });
 
 test("Starting after stopped works", function (t) {
@@ -140,4 +140,53 @@ test("Starting after stopped works", function (t) {
 
     q.start();
     t.ok(q.isStarted());
+});
+
+test("New jobs in an empty, started queue must be scheduled", function (t) {
+    t.plan(6);
+
+    var timestamps = [];
+
+    var q = new Queue(1 / 4);
+    q.start();
+
+    q.append(function () {
+        console.log("First: " + new Date().toISOString());
+
+
+        timestamps.push(Date.now());
+    });
+    t.equals(timestamps.length, 1, "The first task must be executed immediately");
+    t.ok((Date.now() - timestamps[0]) <= 150, "The first task must be executed immediately");
+
+    setTimeout(function () {
+        //add a new task after one second to be executed after 4 seconds (one task in 4 seconds is executed)
+        q.append(function () {
+            console.log("Second: " + new Date().toISOString());
+            timestamps.push(Date.now());
+        });
+        t.equals(timestamps.length, 1, "Tasks added after the first add call must be executed scheduled, i.e. not immediately.");
+    }, 1000);
+
+    setTimeout(function () {
+        t.equals(timestamps.length, 2, "The second task must be scheduled to fit into the first timeout and not timeout after the time of adding it.");
+        t.ok((Date.now() - timestamps[1]) <= 300, "The second task must be executed after about 4s: " + (Date.now() - timestamps[1]));
+        t.ok(q.isEmpty());
+    }, 4200);
+});
+
+test("Removing a testk works", function (t) {
+    t.plan(2);
+
+    var q = new Queue();
+    var task = function() {
+    };
+
+    q.add(task);
+    q.add(task);
+    q.add(task);
+
+    var removed = q.remove(task);
+    t.equals(removed, 3, "All tasks must have been removed");
+    t.ok(q.isEmpty());
 });
