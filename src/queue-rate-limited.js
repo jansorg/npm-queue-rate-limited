@@ -102,6 +102,7 @@
             if (this.currentTaskTimeoutId) {
                 clearInterval(this.currentTaskTimeoutId);
                 this.currentTaskTimeoutId = null;
+                this.lastTaskTimestamp = null;
             }
         }
     };
@@ -182,7 +183,7 @@
         }
 
         var removedItems = 0;
-        for (var i = this.tasks.length-1; i>=0; i--) {
+        for (var i = this.tasks.length - 1; i >= 0; i--) {
             if (this.tasks[i].task === task) {
                 this.tasks.splice(i, 1);
                 removedItems++;
@@ -192,6 +193,9 @@
         return removedItems;
     };
 
+    /**
+     * @returns {Number} - The number of queued/waiting tasks in the queue.
+     */
     Queue.prototype.getQueueSize = function () {
         return this.tasks.length;
     };
